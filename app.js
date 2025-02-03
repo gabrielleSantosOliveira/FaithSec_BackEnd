@@ -1,7 +1,11 @@
+const cors = require('cors');
 const express = require('express');
 const { sequelize, Chamada, Enfermeiro } = require('./config/database');
 const path = require('path');
 const app = express();
+
+// Adicione isso antes das suas rotas
+app.use(cors());
 
 app.use(express.json());
 app.use(express.static('public'));
@@ -67,6 +71,82 @@ app.get('/verificar-nfc/:nfc', async (req, res) => {
   
 });
 
+// Rota POST para criar um novo enfermeiro
+app.post('/enfermeiro', async (req, res) => {
+  try {
+    console.log('Requisição recebida em /enfermeiro');
+    console.log('Body:', req.body);
+    
+    const {
+      nfc,
+      telefone1,
+      telefone2,
+      nome,
+      senha,
+      dataNasc,
+      cargo,
+      cpf,
+      endereco,
+      estadoCracha,
+      ala
+    } = req.body;
+
+    // Log dos dados após desestruturação
+    console.log('Dados extraídos:', { 
+      nfc, telefone1, telefone2, nome, senha, 
+      dataNasc, cargo, cpf, endereco, estadoCracha, ala 
+    });
+
+    // Validações básicas
+    if (!nfc || !nome || !cpf || !senha) {
+      console.log('Validação falhou - campos obrigatórios faltando');
+      return res.status(400).json({
+        error: 'Campos obrigatórios não preenchidos'
+      });
+    }
+
+    // Verifica se já existe um enfermeiro com o mesmo NFC
+    const enfermeiroBusca = await Enfermeiro.findByPk(nfc);
+    if (enfermeiroBusca) {
+      console.log('NFC já existe:', nfc);
+      return res.status(400).json({
+        error: 'Já existe um enfermeiro cadastrado com este NFC'
+      });
+    }
+
+    // Cria o novo enfermeiro
+    console.log('Tentando criar novo enfermeiro...');
+    const novoEnfermeiro = await Enfermeiro.create({
+      nfc,
+      telefone1,
+      telefone2,
+      qtdAtend: 0,
+      nome,
+      senha,
+      dataNasc: dataNasc ? new Date(dataNasc) : null,
+      cargo,
+      cpf,
+      endereco,
+      estadoCracha,
+      ala
+    });
+
+    console.log('Enfermeiro criado com sucesso:', novoEnfermeiro.toJSON());
+
+    return res.status(201).json({
+      message: 'Enfermeiro cadastrado com sucesso',
+      data: novoEnfermeiro
+    });
+
+  } catch (error) {
+    console.error('Erro detalhado ao cadastrar enfermeiro:', error);
+    return res.status(500).json({
+      error: 'Erro interno do servidor ao cadastrar enfermeiro',
+      details: error.message
+    });
+  }
+});
+
 // Rota para registrar chamada
 app.get('/registrar-chamada', async (req, res) => {
   try {
@@ -97,11 +177,11 @@ app.get('/registrar-chamada', async (req, res) => {
 });
 
 const PORT = 3000;
-app.listen(PORT, async () => {
+app.listen(PORT, '0.0.0.0', async () => {
   try {
     await sequelize.authenticate();
     console.log('Conexão com banco de dados estabelecida.');
-    console.log(`Servidor rodando na porta ${PORT}`);
+    console.log(`Servidor rodando em: http://0.0.0.0:${PORT}`);
   } catch (error) {
     console.error('Erro ao conectar com banco de dados:', error);
   }

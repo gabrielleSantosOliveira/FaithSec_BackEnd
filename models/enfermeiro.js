@@ -36,6 +36,10 @@ module.exports = (sequelize) => {
     estadoCracha: {
       type: DataTypes.ENUM('habilitado', 'desabilitado'),
       defaultValue: 'habilitado'
+    },
+    ala: {
+      type: DataTypes.ENUM('UTI', 'Internação Geral', 'nenhum'),
+      defaultValue: 'nenhum'
     }
   }, {
     tableName: 'enfermeiro',
