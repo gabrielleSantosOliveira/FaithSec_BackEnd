@@ -2,6 +2,7 @@ const { Sequelize } = require('sequelize');
 
 const sequelize = new Sequelize('outrofaithsec', 'root', 'admin', {
   host: 'localhost',
+  port: 3306,
   dialect: 'mysql'
 });
 

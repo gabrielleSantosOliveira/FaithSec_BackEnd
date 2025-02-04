@@ -35,7 +35,7 @@ app.post('/atualizar-cracha/:nfc', async (req, res) => {
     const { estado } = req.body;
 
     const enfermeiro = await Enfermeiro.findByPk(nfc);
-    
+
     if (!enfermeiro) {
       return res.status(404).json({ error: 'Enfermeiro não encontrado' });
     }
@@ -68,7 +68,7 @@ app.get('/verificar-nfc/:nfc', async (req, res) => {
     console.error('Erro ao registrar chamada:', error);
     res.status(500).json({ success: false, error: error.message });
   }
-  
+
 });
 
 // Rota POST para criar um novo enfermeiro
@@ -76,7 +76,7 @@ app.post('/enfermeiro', async (req, res) => {
   try {
     console.log('Requisição recebida em /enfermeiro');
     console.log('Body:', req.body);
-    
+
     const {
       nfc,
       telefone1,
@@ -92,9 +92,9 @@ app.post('/enfermeiro', async (req, res) => {
     } = req.body;
 
     // Log dos dados após desestruturação
-    console.log('Dados extraídos:', { 
-      nfc, telefone1, telefone2, nome, senha, 
-      dataNasc, cargo, cpf, endereco, estadoCracha, ala 
+    console.log('Dados extraídos:', {
+      nfc, telefone1, telefone2, nome, senha,
+      dataNasc, cargo, cpf, endereco, estadoCracha, ala
     });
 
     // Validações básicas
@@ -150,7 +150,7 @@ app.post('/enfermeiro', async (req, res) => {
 // Rota para registrar chamada
 app.get('/registrar-chamada', async (req, res) => {
   try {
-    const { 
+    const {
       responsavel,
       criticidade,
       inicio,
@@ -176,7 +176,24 @@ app.get('/registrar-chamada', async (req, res) => {
   }
 });
 
-const PORT = 3000;
+// Rota para listar chamadas (POST, preparada para filtros)
+app.post('/chamadas', async (req, res) => {
+  try {
+    const { filtro } = req.body; // No futuro, pode passar filtros aqui
+
+    const chamadas = await Chamada.findAll({
+      order: [['idChamada', 'DESC']], // Ordena pelas mais recentes
+      limit: 20 // Limita a 20 registros
+    });
+
+    res.json(chamadas);
+  } catch (error) {
+    console.error('Erro ao buscar chamadas:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+const PORT = 3001;
 app.listen(PORT, '0.0.0.0', async () => {
   try {
     await sequelize.authenticate();
