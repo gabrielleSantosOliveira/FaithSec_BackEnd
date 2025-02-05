@@ -19,11 +19,27 @@ app.get('/', (req, res) => {
 app.get('/enfermeiros', async (req, res) => {
   try {
     const enfermeiros = await Enfermeiro.findAll({
-      attributes: ['nfc', 'nome', 'cargo', 'estadoCracha']
+      attributes: ['nfc', 'nome', 'cargo', 'estadoCracha', 'ala']
     });
     res.json(enfermeiros);
   } catch (error) {
     console.error('Erro ao buscar enfermeiros:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Rota para buscar enfermeiro
+app.post('/enfermeiro', async (req, res) => {
+  try {
+
+    const { nfc } = req.body;
+    const enfermeiro = await Enfermeiro.findByPk(nfc);
+    if (!enfermeiro) {
+      return res.status(404).json({ error: 'Enfermeiro não encontrado' });
+    }
+    res.json(enfermeiro);
+  } catch (error) {
+    console.error('Erro ao buscar enfermeiro:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -72,7 +88,7 @@ app.get('/verificar-nfc/:nfc', async (req, res) => {
 });
 
 // Rota POST para criar um novo enfermeiro
-app.post('/enfermeiro', async (req, res) => {
+app.post('/cadastrar-enfermeiro', async (req, res) => {
   try {
     console.log('Requisição recebida em /enfermeiro');
     console.log('Body:', req.body);
@@ -179,9 +195,12 @@ app.get('/registrar-chamada', async (req, res) => {
 // Rota para listar chamadas (POST, preparada para filtros)
 app.post('/chamadas', async (req, res) => {
   try {
-    const { filtro } = req.body; // No futuro, pode passar filtros aqui
+    const { nfc } = req.body; // Recebe o NFC do enfermeiro, se enviado
+
+    const whereClause = nfc ? { nfc_enfermeiro: nfc } : {}; // Filtra pelo NFC se existir
 
     const chamadas = await Chamada.findAll({
+      where: whereClause, // Aplica o filtro apenas se `nfc` for enviado
       order: [['idChamada', 'DESC']], // Ordena pelas mais recentes
       limit: 20 // Limita a 20 registros
     });
