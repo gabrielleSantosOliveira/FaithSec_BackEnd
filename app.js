@@ -260,7 +260,7 @@ app.get('/finalizar-chamada', (req, res) => {
 });
 
 // Inicialização do servidor
-server.listen(3000, '0.0.0.0', async () => {
+server.listen(3001, '0.0.0.0', async () => {
   console.log('=== SERVIDOR INICIADO ===');
   console.log(`Ouvindo em: 0.0.0.0:3000`);
   
