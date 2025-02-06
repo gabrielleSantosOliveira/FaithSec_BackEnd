@@ -255,6 +255,82 @@ app.post('/enfermeiro', async (req, res) => {
   }
 });
 
+// Rota para atualizar o cadastro do enfermeiro
+// Rota para atualizar o cadastro do enfermeiro usando POST
+app.post('/enfermeiro/atualizar', async (req, res) => {
+  try {
+    console.log('Requisição recebida para atualizar enfermeiro');
+    console.log('Body:', req.body);
+
+    // Mapeamento dos campos recebidos do front-end:
+    // {
+    //   nfc: data.nfc,
+    //   telefone1: data.telefone1,
+    //   telefone2: data.telefone1,  // mesmo valor de telefone1
+    //   nome: data.nome,
+    //   senha: data.password,
+    //   dataNasc: data.dataNasc,
+    //   cargo: data.role,
+    //   cpf: data.cpf,
+    //   endereco: data.address,
+    //   ala: data.address,          // mesmo valor de address
+    // }
+    const {
+      nfc,
+      telefone1,
+      telefone2,
+      nome,
+      password,
+      dataNasc,
+      role,
+      cpf,
+      address,
+      ala
+    } = req.body;
+
+    // Validação: o NFC é obrigatório para localizar o enfermeiro
+    if (!nfc) {
+      console.log('NFC não fornecido para atualização');
+      return res.status(400).json({ error: 'NFC é obrigatório para atualização' });
+    }
+
+    // Busca o enfermeiro pelo NFC
+    const enfermeiro = await Enfermeiro.findByPk(nfc);
+    if (!enfermeiro) {
+      console.log('Enfermeiro não encontrado com o NFC:', nfc);
+      return res.status(404).json({ error: 'Enfermeiro não encontrado' });
+    }
+
+    // Atualiza os campos conforme o mapeamento informado
+    await enfermeiro.update({
+      telefone1: telefone1,
+      telefone2: telefone2, // conforme mapeamento recebido
+      nome: nome,
+      senha: password,
+      dataNasc: dataNasc ? new Date(dataNasc) : null,
+      cargo: role,
+      cpf: cpf,
+      endereco: address,
+      ala: ala // conforme mapeamento recebido
+    });
+
+    console.log('Enfermeiro atualizado com sucesso:', enfermeiro.toJSON());
+    return res.status(200).json({
+      message: 'Cadastro do enfermeiro atualizado com sucesso',
+      data: enfermeiro
+    });
+
+  } catch (error) {
+    console.error('Erro ao atualizar enfermeiro:', error);
+    return res.status(500).json({
+      error: 'Erro interno do servidor ao atualizar enfermeiro',
+      details: error.message
+    });
+  }
+});
+
+
+
 // Rota para registrar chamada
 app.get('/registrar-chamada', async (req, res) => {
   try {
@@ -349,7 +425,7 @@ app.get('/finalizar-chamada', (req, res) => {
 // Inicialização do servidor
 server.listen(3001, '0.0.0.0', async () => {
   console.log('=== SERVIDOR INICIADO ===');
-  console.log(`Ouvindo em: 0.0.0.0:3000`);
+  console.log(`Ouvindo em: 0.0.0.0:3001`);
 
   // Imprimir endereços de rede
   const os = require('os');
