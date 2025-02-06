@@ -4,6 +4,7 @@ const { sequelize, Chamada, Enfermeiro } = require('./config/database');
 const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
+const { Op } = require('sequelize');
 
 const app = express();
 const server = http.createServer(app);
@@ -46,10 +47,10 @@ app.post('/chamada', (req, res) => {
       throw new Error('Criticidade inválida. Deve ser "Emergencia" ou "Auxilio"');
     }
 
-    io.emit('nova-chamada', { 
-      leito, 
-      andar, 
-      quarto, 
+    io.emit('nova-chamada', {
+      leito,
+      andar,
+      quarto,
       ala,
       criticidade
     });
@@ -80,6 +81,64 @@ app.get('/enfermeiros', async (req, res) => {
   } catch (error) {
     console.error('Erro ao buscar enfermeiros:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/enfermeiros/buscar', async (req, res) => {
+  try {
+    const { nome, ala, cargo, nfc, estadoCracha } = req.body;
+
+    // Construindo a cláusula WHERE dinamicamente
+    const whereClause = {};
+
+    // Adiciona condições apenas se os campos foram fornecidos com valor não vazio
+    if (nome && nome.trim()) {
+      whereClause.nome = {
+        [Op.like]: `%${nome.trim()}%`  // Busca parcial por nome
+      };
+    }
+
+    if (nfc && nfc.trim()) {
+      whereClause.nfc = nfc.trim();
+      console.log(nfc)
+    }
+
+    if (cargo && cargo.trim()) {
+      whereClause.cargo = cargo.trim();
+    }
+
+    if (estadoCracha && estadoCracha.trim()) {
+      whereClause.estadoCracha = estadoCracha.trim();
+    }
+
+    if (ala && ala.trim()) {
+      whereClause.ala = {
+        [Op.eq]: ala  // Busca por data exata
+      };
+    }
+
+    // Verifica se pelo menos um filtro foi aplicado
+    if (Object.keys(whereClause).length === 0) {
+      return res.status(400).json({
+        error: "É necessário fornecer pelo menos um critério de filtro válido"
+      });
+    }
+
+    const enfermeiros = await Enfermeiro.findAll({
+      where: whereClause,
+      attributes: {
+      },
+      order: [['nome', 'ASC']], // Ordena por nome
+      limit: 20
+    });
+
+    res.json(enfermeiros);
+  } catch (error) {
+    console.error('Erro ao buscar enfermeiros:', error);
+    res.status(500).json({
+      error: "Erro ao buscar enfermeiros",
+      details: error.message
+    });
   }
 });
 
@@ -115,10 +174,10 @@ app.get('/verificar-nfc/:nfc', async (req, res) => {
     if (enfermeiro) {
       console.log('NFC válido detectado, finalizando chamada');
       io.emit('chamada-finalizada', { leito: 'Leito 01' });
-      
-      res.json({ 
-        valid: true, 
-        nome: enfermeiro.nome 
+
+      res.json({
+        valid: true,
+        nome: enfermeiro.nome
       });
     } else {
       res.json({ valid: false });
@@ -220,8 +279,33 @@ app.get('/registrar-chamada', async (req, res) => {
 // Rota para listar chamadas
 app.post('/chamadas', async (req, res) => {
   try {
-    const { nfc } = req.body;
-    const whereClause = nfc ? { nfc_enfermeiro: nfc } : {};
+    const { responsavel, data, time, criticidade, idChamada, nfc } = req.body;
+
+    // Construindo a cláusula WHERE dinamicamente
+    const whereClause = {};
+
+    // Adiciona condições apenas se os campos foram fornecidos com valor não vazio
+    if (nfc && nfc.trim()) whereClause.nfc_enfermeiro = nfc.trim();
+    if (responsavel && responsavel.trim()) whereClause.responsavel = responsavel.trim();
+    if (criticidade && criticidade.trim()) whereClause.criticidade = criticidade.trim();
+    if (idChamada && idChamada.trim()) whereClause.idChamada = idChamada.trim();
+
+    // Tratamento para data
+    if (data && data.trim()) {
+      whereClause.data = data;
+    }
+
+    // Tratamento para time (hora)
+    if (time && time.trim()) {
+      whereClause.inicio = time;
+    }
+
+    // Verifica se pelo menos um filtro foi aplicado
+    // if (Object.keys(whereClause).length === 0) {
+    //   return res.status(400).json({ 
+    //     error: "É necessário fornecer pelo menos um critério de filtro válido" 
+    //   });
+    // }
 
     const chamadas = await Chamada.findAll({
       where: whereClause,
@@ -232,29 +316,32 @@ app.post('/chamadas', async (req, res) => {
     res.json(chamadas);
   } catch (error) {
     console.error('Erro ao buscar chamadas:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      error: "Erro ao buscar chamadas",
+      details: error.message
+    });
   }
 });
 
 // Rota para finalizar chamada
 app.get('/finalizar-chamada', (req, res) => {
   const { leito } = req.query;
-  
+
   console.log('Recebendo requisição para finalizar chamada do leito:', leito);
-  
+
   if (!leito) {
     console.log('Erro: leito não fornecido');
-    return res.status(400).json({ 
-      success: false, 
-      error: 'Leito não fornecido' 
+    return res.status(400).json({
+      success: false,
+      error: 'Leito não fornecido'
     });
   }
-  
+
   io.emit('chamada-finalizada', { leito });
   console.log('Evento chamada-finalizada emitido para o leito:', leito);
-  
-  res.json({ 
-    success: true, 
+
+  res.json({
+    success: true,
     message: `Chamada do leito ${leito} finalizada com sucesso`
   });
 });
@@ -263,7 +350,7 @@ app.get('/finalizar-chamada', (req, res) => {
 server.listen(3001, '0.0.0.0', async () => {
   console.log('=== SERVIDOR INICIADO ===');
   console.log(`Ouvindo em: 0.0.0.0:3000`);
-  
+
   // Imprimir endereços de rede
   const os = require('os');
   const interfaces = os.networkInterfaces();
