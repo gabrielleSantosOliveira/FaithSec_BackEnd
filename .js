@@ -5,24 +5,20 @@ const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
 const { Op } = require('sequelize');
-
-const WebSocketServer = require('./websocket');Z
-
+const WebSocket = require('ws');
 const app = express();
 const server = http.createServer(app);
-const wsServer = new WebSocketServer(server);  //LED AMARELO
+const wss = new WebSocket.Server({ server });
 
 // Configuração do Socket.IO com CORS atualizado
 const io = new Server(server, {
   cors: {
-      origin: "*",
-      methods: ["GET", "POST"],
-      allowedHeaders: ["Content-Type"],
-      credentials: true
+    origin: "*",
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type"],
+    credentials: true
   },
-  transports: ['polling', 'websocket'],
-  pingTimeout: 60000,
-  pingInterval: 25000
+  transports: ['websocket', 'polling']
 });
 
 // Middleware de CORS
@@ -34,36 +30,9 @@ app.use(cors({
 
 app.use(express.json());
 app.use(express.static('public'));
-app.use(express.static('.')); // Adicione no início, junto com outros app.use()
+app.use(express.static('.'));
 
-// Modifique para
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'mobile.html'));
-});
-
-// Rota para receber notificação da ESP32
-app.post('/chamada', (req, res) => {
-  console.log('Recebendo nova chamada!');
-  
-  const chamadaData = req.body;
-  wsServer.handleNewCall(chamadaData);
-  
-  res.json({ success: true });
-});
-
-// Socket.IO connection handler
-io.on('connection', (socket) => {
-  console.log('Cliente Socket.IO conectado');
-  console.log('Clientes conectados:', io.engine.clientsCount);
-});
-
-// Armazena o estado atual do sistema  led amarelo
-let currentState = {
-  ledState: false,
-  lastCall: null
-};
-
-// Função para enviar mensagem para todos os clientes conectados  LED AMARELO
+// Função de broadcast WebSocket
 function broadcast(message) {
   wss.clients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) {
@@ -72,59 +41,127 @@ function broadcast(message) {
   });
 }
 
-// Conexão WebSocket   LED AMARELO
+//celular
+app.get('/mobile', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'mobile.html'));
+});
+
+// Adicione uma função específica para toggle do LED AMARELO
+function toggleLed() {
+  currentState.ledState = !currentState.ledState;
+  broadcast({
+    type: 'ledUpdate',
+    data: { ledState: currentState.ledState }
+  });
+  console.log('Estado do LED alterado para:', currentState.ledState);
+}
+
+// Na configuração do WebSocket, ajuste o handler de mensagem
 wss.on('connection', (ws) => {
-  console.log('Novo cliente conectado');
-  
+  console.log('Novo cliente WebSocket conectado');
+
+  // Envia estado inicial para o cliente
+  ws.send(JSON.stringify({
+    type: 'state',
+    data: { ledState: currentState.ledState }
+  }));
+
   ws.on('message', (message) => {
     try {
-      const data = JSON.parse(message.toString()); // Adicione toString()
-      console.log('Mensagem recebida:', data); // Debug
-      
-      if(data.type === 'toggleYellowLed') {
-        currentState.ledState = !currentState.ledState;
-        broadcast({
-          type: 'ledUpdate',
-          data: { ledState: currentState.ledState }
-        });
+      // Log da mensagem raw
+      const messageStr = message.toString();
+      console.log('Mensagem raw recebida:', messageStr);
+
+      // Ignora mensagens de controle do WebSocket
+      if (messageStr.includes('probe')) {
+        console.log('Mensagem de controle WebSocket recebida:', messageStr);
+        return;
+      }
+
+      // Tenta fazer o parse do JSON
+      const data = JSON.parse(messageStr);
+      console.log('Mensagem parseada:', data);
+
+      if (data.type === 'toggleYellowLed') {
+        toggleLed();
       }
     } catch (error) {
-      console.error('Erro:', error);
+      console.error('Erro ao processar mensagem:', error);
+      // Somente loga o conteúdo se não for uma mensagem de controle
+      if (!message.toString().includes('probe')) {
+        console.error('Conteúdo da mensagem que causou erro:', message.toString());
+      }
     }
+  });
+
+  ws.on('error', (error) => {
+    console.error('Erro no WebSocket:', error);
+  });
+
+  ws.on('close', () => {
+    console.log('Cliente WebSocket desconectado');
   });
 });
 
+// Socket.IO connection handler
+io.on('connection', (socket) => {
+  console.log('Cliente Socket.IO conectado');
+  console.log('Clientes conectados:', io.engine.clientsCount);
+});
 
-// Rota para receber notificação da ESP32 //se mexer provavelmente perde conexão com o WEB
+// Estado global do sistema
+let currentState = {
+  ledState: false
+};
+
+// Rota para receber notificação da ESP32
+// Rota para receber notificação da ESP32
 app.post('/chamada', (req, res) => {
   console.log('Recebendo nova chamada!');
-
-  const chamadaData = req.body;
-  currentState.lastCall = chamadaData;
-  
-  broadcast({
-    type: 'newCall',
-    data: chamadaData
-  });
-  
-  res.json({ success: true });
-
   try {
-    const { leito, andar, quarto, ala, criticidade } = req.body;
-    console.log('Dados recebidos:', { leito, andar, quarto, ala, criticidade });
+    // Aqui estava o erro - criticidade não estava sendo desestruturada do req.body
+    const { leito, andar, quarto, ala, criticidade, isSimulation } = req.body;
+    console.log('Dados recebidos:', { leito, andar, quarto, ala, criticidade, isSimulation });
 
     if (!criticidade || (criticidade !== 'Emergencia' && criticidade !== 'Auxilio')) {
       throw new Error('Criticidade inválida. Deve ser "Emergencia" ou "Auxilio"');
     }
 
-    io.emit('nova-chamada', {
+    const chamadaData = {
       leito,
       andar,
       quarto,
       ala,
-      criticidade
+      criticidade,
+      timestamp: new Date().toLocaleTimeString()
+    };
+
+    // Broadcast via WebSocket (para o celular)
+    broadcast({
+      type: 'newCall',
+      data: chamadaData
     });
-    console.log('Evento nova-chamada emitido para todos os clientes. Criticidade:', criticidade);
+
+    // Emite via Socket.IO (para a web)
+    io.emit('nova-chamada', chamadaData);
+
+    // Salva no banco apenas se não for simulação (botão azul)
+    if (!isSimulation) {
+      // Cria novo registro no banco
+      Chamada.create({
+        responsavel: 'Sistema',
+        data: new Date(),
+        criticidade: criticidade,
+        inicio: chamadaData.timestamp,
+        termino: null,
+        idPaciente: 1, // ou outro valor padrão
+        nfc_enfermeiro: null
+      }).then(() => {
+        console.log('Chamada salva no banco com sucesso');
+      }).catch(err => {
+        console.error('Erro ao salvar chamada no banco:', err);
+      });
+    }
 
     res.json({
       success: true,
@@ -231,7 +268,39 @@ app.post('/atualizar-cracha/:nfc', async (req, res) => {
   }
 });
 
-//se mexer provavelmente perde conexão com o WEB
+// Nova rota específica para verificação mobile
+app.get('/verificar-nfc-mobile/:nfc', async (req, res) => {
+  try {
+    const nfc = req.params.nfc;
+    const enfermeiro = await Enfermeiro.findOne({
+      where: {
+        nfc: nfc,
+        estadoCracha: 'habilitado'
+      }
+    });
+
+    if (enfermeiro) {
+      // Apenas acende o LED amarelo, sem finalizar a chamada
+      broadcast({
+        type: 'ledUpdate',
+        data: { ledState: true }
+      });
+
+      currentState.ledState = true;
+
+      res.json({
+        valid: true,
+        nome: enfermeiro.nome
+      });
+    } else {
+      res.json({ valid: false });
+    }
+  } catch (error) {
+    console.error('Erro ao verificar NFC mobile:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.get('/verificar-nfc/:nfc', async (req, res) => {
   try {
     const nfc = req.params.nfc;
@@ -243,6 +312,15 @@ app.get('/verificar-nfc/:nfc', async (req, res) => {
     });
 
     if (enfermeiro) {
+
+      // Apaga o LED amarelo quando lê o RFID
+      broadcast({
+        type: 'ledUpdate',
+        data: { ledState: false }  // MUDOU AQUI: agora apaga
+      });
+
+      currentState.ledState = false;  // MUDOU AQUI: atualiza estado
+
       console.log('NFC válido detectado, finalizando chamada');
       io.emit('chamada-finalizada', { leito: 'Leito 01' });
 
@@ -326,6 +404,67 @@ app.post('/enfermeiro', async (req, res) => {
   }
 });
 
+// Rota para atualizar o cadastro do enfermeiro
+app.post('/enfermeiro/atualizar', async (req, res) => {
+  try {
+    console.log('Requisição recebida para atualizar enfermeiro');
+    console.log('Body:', req.body);
+
+    const {
+      nfc,
+      telefone1,
+      telefone2,
+      nome,
+      password,
+      dataNasc,
+      role,
+      cpf,
+      address,
+      ala
+    } = req.body;
+
+    // Validação: o NFC é obrigatório para localizar o enfermeiro
+    if (!nfc) {
+      console.log('NFC não fornecido para atualização');
+      return res.status(400).json({ error: 'NFC é obrigatório para atualização' });
+    }
+
+    // Busca o enfermeiro pelo NFC
+    const enfermeiro = await Enfermeiro.findByPk(nfc);
+    if (!enfermeiro) {
+      console.log('Enfermeiro não encontrado com o NFC:', nfc);
+      return res.status(404).json({ error: 'Enfermeiro não encontrado' });
+    }
+
+    // Atualiza os campos conforme o mapeamento informado
+    await enfermeiro.update({
+      telefone1: telefone1,
+      telefone2: telefone2, // conforme mapeamento recebido
+      nome: nome,
+      senha: password,
+      dataNasc: dataNasc ? new Date(dataNasc) : null,
+      cargo: role,
+      cpf: cpf,
+      endereco: address,
+      ala: ala // conforme mapeamento recebido
+    });
+
+    console.log('Enfermeiro atualizado com sucesso:', enfermeiro.toJSON());
+    return res.status(200).json({
+      message: 'Cadastro do enfermeiro atualizado com sucesso',
+      data: enfermeiro
+    });
+
+  } catch (error) {
+    console.error('Erro ao atualizar enfermeiro:', error);
+    return res.status(500).json({
+      error: 'Erro interno do servidor ao atualizar enfermeiro',
+      details: error.message
+    });
+  }
+});
+
+
 // Rota para registrar chamada
 app.get('/registrar-chamada', async (req, res) => {
   try {
@@ -336,7 +475,7 @@ app.get('/registrar-chamada', async (req, res) => {
       criticidade: req.query.criticidade,
       inicio: req.query.inicio,
       termino: req.query.termino,
-      cpf_paciente: req.query.cpf_paciente,
+      idPaciente: req.query.idPaciente,
       nfc_enfermeiro: req.query.nfc_enfermeiro
     });
     console.log('Chamada criada:', chamada.toJSON());
@@ -370,6 +509,13 @@ app.post('/chamadas', async (req, res) => {
     if (time && time.trim()) {
       whereClause.inicio = time;
     }
+
+    // Verifica se pelo menos um filtro foi aplicado
+    // if (Object.keys(whereClause).length === 0) {
+    //   return res.status(400).json({ 
+    //     error: "É necessário fornecer pelo menos um critério de filtro válido" 
+    //   });
+    // }
 
     const chamadas = await Chamada.findAll({
       where: whereClause,
@@ -410,20 +556,7 @@ app.get('/finalizar-chamada', (req, res) => {
   });
 });
 
-// Rota para confirmar atendimento
-app.post('/confirmar-atendimento', (req, res) => {
-  const { cardId } = req.body;
-  
-  // Emite evento para a ESP32 acender o LED
-  io.emit('acender-led', { message: 'LED_ON' });
-  
-  // Emite evento para remover o card de todos os clientes
-  io.emit('chamada-finalizada', { cardId });
-  
-  res.json({ success: true });
-});
-
-// Inicialização do servidor  //se mexer provavelmente perde conexão com o WEB
+// Inicialização do servidor
 server.listen(3001, '0.0.0.0', async () => {
   console.log('=== SERVIDOR INICIADO ===');
   console.log(`Ouvindo em: 0.0.0.0:3001`);

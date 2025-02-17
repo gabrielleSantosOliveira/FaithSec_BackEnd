@@ -1,5 +1,4 @@
 const { DataTypes } = require('sequelize');
-
 module.exports = (sequelize) => {
   const Chamada = sequelize.define('Chamada', {
     idChamada: {
@@ -22,16 +21,26 @@ module.exports = (sequelize) => {
     termino: {
       type: DataTypes.TIME
     },
-    cpf_paciente: {
-      type: DataTypes.STRING(45)
+    duracao: {
+      type: DataTypes.TIME
+    },
+    idPaciente: {
+      type: DataTypes.INTEGER,
+      references: {
+        model: 'paciente',
+        key: 'idPaciente'
+      }
     },
     nfc_enfermeiro: {
-      type: DataTypes.STRING(40)
+      type: DataTypes.STRING(40),
+      references: {
+        model: 'enfermeiro',
+        key: 'nfc'
+      }
     }
   }, {
     tableName: 'chamada',
     timestamps: false
   });
-
   return Chamada;
 };

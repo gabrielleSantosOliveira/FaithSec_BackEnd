@@ -1,7 +1,11 @@
 const { DataTypes } = require('sequelize');
-
 module.exports = (sequelize) => {
   const Paciente = sequelize.define('Paciente', {
+    idPaciente: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
+    },
     nome: {
       type: DataTypes.STRING(100)
     },
@@ -51,13 +55,11 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(45)
     },
     cpf: {
-      type: DataTypes.STRING(45),
-      primaryKey: true
+      type: DataTypes.STRING(45)
     }
   }, {
     tableName: 'paciente',
     timestamps: false
   });
-
   return Paciente;
 };

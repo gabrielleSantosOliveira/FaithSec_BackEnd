@@ -12,8 +12,8 @@ const Chamada = require('../models/chamada')(sequelize);
 
 // Define os relacionamentos
 Chamada.belongsTo(Paciente, {
-  foreignKey: 'cpf_paciente',
-  targetKey: 'cpf'
+  foreignKey: 'idPaciente',
+  targetKey: 'idPaciente'
 });
 
 Chamada.belongsTo(Enfermeiro, {
