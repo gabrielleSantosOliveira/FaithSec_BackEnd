@@ -1,6 +1,6 @@
 const cors = require('cors');
 const express = require('express');
-const { sequelize, Chamada, Enfermeiro } = require('./config/database');
+const { sequelize, Chamada, Enfermeiro, Paciente } = require('./config/database');
 const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -8,10 +8,12 @@ const { Op } = require('sequelize');
 const WebSocket = require('ws');
 const app = express();
 const server = http.createServer(app);
+const ioServer = http.createServer();
+
 const wss = new WebSocket.Server({ server });
 
 // Configuração do Socket.IO com CORS atualizado
-const io = new Server(server, {
+const io = new Server(ioServer, {
   cors: {
     origin: "*",
     methods: ["GET", "POST"],
@@ -104,9 +106,32 @@ wss.on('connection', (ws) => {
 });
 
 // Socket.IO connection handler
-io.on('connection', (socket) => {
+// Verificação de crachá em tempo real via WebSocketio.on('connection', (socket) => {
+io.on('verificar-cracha', async (nfc) => {
   console.log('Cliente Socket.IO conectado');
   console.log('Clientes conectados:', io.engine.clientsCount);
+  try {
+    const enfermeiro = await Enfermeiro.findByPk(nfc);
+
+    if (!enfermeiro) {
+      console.log(`Crachá ${nfc} não encontrado.`);
+      socket.emit('cracha-invalido');
+      socket.disconnect();
+      return
+    }
+
+    if (enfermeiro.estadoCracha !== 'habilitado') {
+      console.log(`Crachá ${nfc} desabilitado. Desconectando enfermeiro.`);
+      socket.emit('cracha-desabilitado');
+      socket.disconnect();
+      return
+    }
+
+    console.log(`Crachá ${nfc} está habilitado.`);
+  } catch (error) {
+    console.error('Erro ao verificar crachá:', error);
+    socket.emit('erro-verificacao', error.message);
+  }
 });
 
 // Estado global do sistema
@@ -181,6 +206,33 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'chamadas.html'));
 });
 
+// Rotas de pacientes
+app.get('/pacientes', async (req, res) => {
+  try {
+    const pacientes = await Paciente.findAll();
+    res.json(pacientes);
+  } catch (error) {
+    console.error('Erro ao buscar pacientes:', error);
+    res.status(500).json({ error: 'Erro ao buscar pacientes' });
+  }
+});
+
+app.get('/pacientes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const paciente = await Paciente.findByPk(id);
+
+    if (!paciente) {
+      return res.status(404).json({ error: 'Paciente não encontrado' });
+    }
+
+    res.json(paciente);
+  } catch (error) {
+    console.error('Erro ao buscar paciente:', error);
+    res.status(500).json({ error: 'Erro ao buscar paciente' });
+  }
+});
+
 // Rotas de enfermeiros
 app.get('/enfermeiros', async (req, res) => {
   try {
@@ -252,6 +304,7 @@ app.post('/enfermeiros/buscar', async (req, res) => {
   }
 });
 
+// Atualização do estado do crachá
 app.post('/atualizar-cracha/:nfc', async (req, res) => {
   try {
     const { nfc } = req.params;
@@ -264,10 +317,48 @@ app.post('/atualizar-cracha/:nfc', async (req, res) => {
     }
 
     await enfermeiro.update({ estadoCracha: estado });
+
+    if (estado !== 'habilitado') {
+      console.log(`Emitindo evento para desconectar enfermeiro com crachá ${nfc}`);
+      io.emit('cracha-desabilitado', { nfc });
+    }
+
     res.json({ success: true, message: 'Estado atualizado com sucesso' });
   } catch (error) {
     console.error('Erro ao atualizar estado:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+// Nova rota específica para verificação mobile
+app.get('/verificar-nfc-mobile/:nfc', async (req, res) => {
+  try {
+    const nfc = req.params.nfc;
+    const enfermeiro = await Enfermeiro.findOne({
+      where: {
+        nfc: nfc,
+        estadoCracha: 'habilitado'
+      }
+    });
+
+    if (enfermeiro) {
+      // Apenas acende o LED amarelo, sem finalizar a chamada
+      broadcast({
+        type: 'ledUpdate',
+        data: { ledState: true }
+      });
+
+      currentState.ledState = true;
+
+      res.json({
+        valid: true,
+        nome: enfermeiro.nome
+      });
+    } else {
+      res.json({ valid: false });
+    }
+  } catch (error) {
+    console.error('Erro ao verificar NFC mobile:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -512,20 +603,13 @@ app.post('/chamadas', async (req, res) => {
       whereClause.inicio = time;
     }
 
-    // Verifica se pelo menos um filtro foi aplicado
-    // if (Object.keys(whereClause).length === 0) {
-    //   return res.status(400).json({ 
-    //     error: "É necessário fornecer pelo menos um critério de filtro válido" 
-    //   });
-    // }
-
     const chamadas = await Chamada.findAll({
       where: whereClause,
       order: [['idChamada', 'DESC']],
       limit: 20
     });
 
-    res.json(chamadas);
+    res.json(chamadas.length ? chamadas : []);
   } catch (error) {
     console.error('Erro ao buscar chamadas:', error);
     res.status(500).json({
@@ -558,6 +642,49 @@ app.get('/finalizar-chamada', (req, res) => {
   });
 });
 
+// Rota para login do enfermeiro
+app.post('/login-enfermeiro', async (req, res) => {
+  try {
+    const { cpf, senha, nfc } = req.body;
+
+    if (!cpf || !senha) {
+      return res.status(400).json({ error: 'Nome e senha são obrigatórios' });
+    }
+
+    // Filtro base: cpf e senha
+    const whereClause = { cpf, senha };
+
+    // Se o NFC for enviado, adiciona ao filtro
+    if (nfc) {
+      whereClause.nfc = nfc;
+    }
+
+    const enfermeiro = await Enfermeiro.findOne({ where: whereClause });
+
+    if (!enfermeiro) {
+      return res.status(401).json({ error: 'Credenciais inválidas' });
+    }
+
+    if (!nfc) {
+      // Caso sem NFC, retorna apenas sucesso
+      return res.json({ success: true });
+    }
+
+    // Verifica se o cartão está habilitado
+    if (enfermeiro.estadoCracha !== 'habilitado') {
+      console.log(`Cartão ${nfc} não habilitado para o enfermeiro ${cpf}`);
+      return res.status(403).json({ error: 'Cartão não habilitado' });
+    }
+
+    // Caso com NFC e cartão habilitado, retorna os dados completos
+    return res.json(enfermeiro);
+
+  } catch (error) {
+    console.error('Erro ao fazer login:', error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
 // Inicialização do servidor
 server.listen(3001, '0.0.0.0', async () => {
   console.log('=== SERVIDOR INICIADO ===');
@@ -573,4 +700,8 @@ server.listen(3001, '0.0.0.0', async () => {
       }
     });
   });
+});
+
+ioServer.listen(4000, () => {
+  console.log('Socket.IO rodando na porta 4000');
 });

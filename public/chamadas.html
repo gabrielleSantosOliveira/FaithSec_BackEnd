@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sistema de Chamadas - Monitor</title>
     <style>
         body {
@@ -143,10 +143,10 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        const socket = io({
-            reconnectionDelayMax: 10000,
-            reconnection: true
-        });
+      const socket = io({
+        reconnectionDelayMax: 10000,
+        reconnection: true,
+      });
 
         let activeCalls = [];
         const mainContainer = document.getElementById('main-container');
@@ -185,7 +185,6 @@
             
             return card;
         }
-
         function updateDisplay() {
             mainContainer.innerHTML = '';
             sideContainer.innerHTML = '';
@@ -248,5 +247,5 @@
             }
         });
     </script>
-</body>
+  </body>
 </html>

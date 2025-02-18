@@ -199,6 +199,19 @@
                     <p>${call.andar} - ${call.ala}</p>
                 </div>
             `;
+      }
+
+      async function verificarNFC() {
+        const nfcInput = document.getElementById("nfcInput");
+        const messageDiv = document.getElementById("message");
+
+        if (!nfcInput.value.trim()) {
+          messageDiv.innerHTML = `
+                    <div class="message error">
+                        Por favor, insira um código NFC
+                    </div>
+                `;
+          return;
         }
 
         async function verificarNFC() {
@@ -242,9 +255,11 @@
                 `;
             }
         }
+      }
 
         // Iniciar conexão WebSocket quando a página carregar
         connectWebSocket();
+      
     </script>
-</body>
+  </body>
 </html>
