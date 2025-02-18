@@ -9,6 +9,7 @@ const sequelize = new Sequelize('outrofaithsec', 'root', 'admin', {
 const Paciente = require('../models/paciente')(sequelize);
 const Enfermeiro = require('../models/enfermeiro')(sequelize);
 const Chamada = require('../models/chamada')(sequelize);
+const Admin = require('../models/admin')(sequelize);
 
 // Define os relacionamentos
 Chamada.belongsTo(Paciente, {
@@ -25,5 +26,6 @@ module.exports = {
   sequelize,
   Chamada,
   Paciente,
-  Enfermeiro
+  Enfermeiro,
+  Admin
 };
