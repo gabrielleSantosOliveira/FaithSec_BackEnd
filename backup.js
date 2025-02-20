@@ -8,11 +8,12 @@ const { Op } = require('sequelize');
 const WebSocket = require('ws');
 const app = express();
 const server = http.createServer(app);
+const ioServer = http.createServer();
 
 const wss = new WebSocket.Server({ server });
 
 // Configuração do Socket.IO com CORS atualizado
-const io = new Server(server, {
+const io = new Server(ioServer, {
   cors: {
     origin: "*",
     methods: ["GET", "POST"],
@@ -21,8 +22,6 @@ const io = new Server(server, {
   },
   transports: ['websocket', 'polling']
 });
-
-
 
 // Middleware de CORS
 app.use(cors({
@@ -179,9 +178,9 @@ app.post('/chamada', (req, res) => {
         criticidade: criticidade,
         inicio: inicio || new Date().toTimeString().split(' ')[0],
         termino: null,
-        nfc_enfermeiro: nfc_enfermeiro || null,
+        nfc_enfermeiro: 1234567,
         duracao: null,
-        idPaciente: idPaciente || 1,
+        idPaciente: 1,
         leito: leito,
         andar: andar,
         quarto: quarto,
@@ -702,4 +701,8 @@ server.listen(3001, '0.0.0.0', async () => {
       }
     });
   });
+});
+
+ioServer.listen(4000, () => {
+  console.log('Socket.IO rodando na porta 4000');
 });

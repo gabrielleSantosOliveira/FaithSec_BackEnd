@@ -141,6 +141,7 @@ let currentState = {
 
 // Rota para receber notificação da ESP32
 app.post('/chamada', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'chamadas.html'));
   console.log('Recebendo nova chamada!');
   try {
     // Aqui estava o erro - criticidade não estava sendo desestruturada do req.body
@@ -177,9 +178,9 @@ app.post('/chamada', (req, res) => {
         criticidade: criticidade,
         inicio: inicio || new Date().toTimeString().split(' ')[0],
         termino: null,
-        nfc_enfermeiro: nfc_enfermeiro || null,
+        nfc_enfermeiro: 1234567,
         duracao: null,
-        idPaciente: idPaciente || 1,
+        idPaciente: 1,
         leito: leito,
         andar: andar,
         quarto: quarto,

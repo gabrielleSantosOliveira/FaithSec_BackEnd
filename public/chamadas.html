@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Chamadas - Monitor</title>
     <style>
         body {
@@ -141,12 +141,12 @@
         </div>
     </div>
 
-    <script src="/socket.io/socket.io.js"></script>
+    <script src="http://172.20.10.13:4000/socket.io/socket.io.js"></script>
     <script>
-      const socket = io({
-        reconnectionDelayMax: 10000,
-        reconnection: true,
-      });
+        const socket = io('http://172.20.10.13:4000/',{
+            reconnectionDelayMax: 10000,
+            reconnection: true
+        });
 
         let activeCalls = [];
         const mainContainer = document.getElementById('main-container');
@@ -185,6 +185,7 @@
             
             return card;
         }
+
         function updateDisplay() {
             mainContainer.innerHTML = '';
             sideContainer.innerHTML = '';
@@ -232,6 +233,7 @@
         }
 
         socket.on('nova-chamada', (data) => {
+            console.log('nova-chamada')
             // Adiciona timestamp se não existir
             if (!data.timestamp) {
                 data.timestamp = new Date().toLocaleTimeString();
@@ -247,5 +249,5 @@
             }
         });
     </script>
-  </body>
+</body>
 </html>
