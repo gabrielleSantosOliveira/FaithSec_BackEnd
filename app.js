@@ -614,34 +614,41 @@ app.get('/registrar-chamada', async (req, res) => {
 // Rota para listar chamadas
 app.post('/chamadas', async (req, res) => {
   try {
-    const { responsavel, data, time, criticidade, idChamada, nfc } = req.body;
+    const { responsavel, data, time, criticidade, idChamada, nfc, limite, page } = req.body;
 
     // Construindo a cláusula WHERE dinamicamente
     const whereClause = {};
-
-    // Adiciona condições apenas se os campos foram fornecidos com valor não vazio
     if (nfc && nfc.trim()) whereClause.nfc_enfermeiro = nfc.trim();
     if (responsavel && responsavel.trim()) whereClause.responsavel = responsavel.trim();
     if (criticidade && criticidade.trim()) whereClause.criticidade = criticidade.trim();
     if (idChamada && idChamada.trim()) whereClause.idChamada = idChamada.trim();
+    if (data && data.trim()) whereClause.data = data;
+    if (time && time.trim()) whereClause.inicio = time;
 
-    // Tratamento para data
-    if (data && data.trim()) {
-      whereClause.data = data;
-    }
+    // Definindo valores de paginação
+    const pageNumber = Number(page) || 1; // Página padrão: 1
+    const limitNumber = Number(limite) || 20; // Limite padrão: 20
+    const offset = (pageNumber - 1) * limitNumber; // Cálculo do offset
 
-    // Tratamento para time (hora)
-    if (time && time.trim()) {
-      whereClause.inicio = time;
-    }
+    // Contar o total de registros que atendem aos filtros
+    const totalChamadas = await Chamada.count({ where: whereClause });
 
+    // Buscar chamadas com paginação
     const chamadas = await Chamada.findAll({
       where: whereClause,
       order: [['idChamada', 'DESC']],
-      limit: 20
+      limit: limitNumber,
+      offset: offset
     });
 
-    res.json(chamadas.length ? chamadas : []);
+    // Calculando o total de páginas
+    const totalPages = Math.ceil(totalChamadas / limitNumber);
+
+    res.json({
+      chamadas,
+      totalPaginas: totalPages,
+      paginaAtual: pageNumber
+    });
   } catch (error) {
     console.error('Erro ao buscar chamadas:', error);
     res.status(500).json({
@@ -650,6 +657,7 @@ app.post('/chamadas', async (req, res) => {
     });
   }
 });
+
 
 // Rota para finalizar chamada
 app.get('/finalizar-chamada', (req, res) => {
