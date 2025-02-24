@@ -1,250 +1,258 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Monitor de Chamadas - Mobile</title>
     <!-- Adiciona Socket.IO -->
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f0f0f0;
-        }
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 20px;
+        background-color: #f0f0f0;
+      }
 
-        .card {
-            background: white;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
+      .card {
+        background: white;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
 
-        .emergency {
-            border-left: 5px solid #ff4444;
-            background-color: #fff5f5;
-        }
+      .emergency {
+        border-left: 5px solid #ff4444;
+        background-color: #fff5f5;
+      }
 
-        .auxilio {
-            border-left: 5px solid #ffbb33;
-            background-color: #fff8e6;
-        }
+      .auxilio {
+        border-left: 5px solid #ffbb33;
+        background-color: #fff8e6;
+      }
 
-        .input-container {
-            display: none; /* Começa escondido */
-        }
+      .input-container {
+        display: none; /* Começa escondido */
+      }
 
-        .input-group {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
+      .input-group {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
 
-        input {
-            flex: 1;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 16px;
-        }
+      input {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 16px;
+      }
 
-        button {
-            padding: 10px 20px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-        }
+      button {
+        padding: 10px 20px;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+      }
 
-        button:hover {
-            background-color: #45a049;
-        }
+      button:hover {
+        background-color: #45a049;
+      }
 
-        .message {
-            padding: 10px;
-            border-radius: 4px;
-            margin-bottom: 10px;
-        }
+      .message {
+        padding: 10px;
+        border-radius: 4px;
+        margin-bottom: 10px;
+      }
 
-        .success {
-            background-color: #dff0d8;
-            color: #3c763d;
-            border: 1px solid #d6e9c6;
-        }
+      .success {
+        background-color: #dff0d8;
+        color: #3c763d;
+        border: 1px solid #d6e9c6;
+      }
 
-        .error {
-            background-color: #f2dede;
-            color: #a94442;
-            border: 1px solid #ebccd1;
-        }
+      .error {
+        background-color: #f2dede;
+        color: #a94442;
+        border: 1px solid #ebccd1;
+      }
 
-        #connectionStatus {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-size: 14px;
-        }
+      #connectionStatus {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-size: 14px;
+      }
 
-        .atendimento-message {
-            background-color: #dff0d8;
-            color: #3c763d;
-            padding: 15px;
-            border-radius: 4px;
-            margin-top: 10px;
-            text-align: center;
-            font-weight: bold;
-            display: none;
-        }
+      .atendimento-message {
+        background-color: #dff0d8;
+        color: #3c763d;
+        padding: 15px;
+        border-radius: 4px;
+        margin-top: 10px;
+        text-align: center;
+        font-weight: bold;
+        display: none;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div id="connectionStatus">Desconectado</div>
     <div id="currentCall"></div>
-    
+
     <div id="inputContainer" class="input-container">
-        <div class="input-group">
-            <input type="text" id="nfcInput" placeholder="Digite o código NFC">
-            <button onclick="verificarNFC()">Verificar</button>
-        </div>
+      <div class="input-group">
+        <input type="text" id="nfcInput" placeholder="Digite o código NFC" />
+        <button onclick="verificarNFC()">Verificar</button>
+      </div>
     </div>
 
     <div id="atendimentoMessage" class="atendimento-message">
-        Atendimento sendo realizado
+      Atendimento sendo realizado
     </div>
 
     <div id="message"></div>
 
     <script>
-        let ws = null;
-        let reconnectInterval = null;
-        let chamadaAtiva = false;
+      let ws = null;
+      let reconnectInterval = null;
+      let chamadaAtiva = false;
 
-        // Inicializa Socket.IO
-        const socket = io('http://172.20.10.13:4000',{
-            reconnectionDelayMax: 10000,
-            reconnection: true
-        });
+      // Inicializa Socket.IO
+      const socket = io("http://192.168.1.10:4000", {
+        reconnectionDelayMax: 10000,
+        reconnection: true,
+      });
 
-        // Listener para finalização de chamada
-        socket.on('chamada-finalizada', (data) => {
-            console.log('Chamada finalizada recebida:', data);
-            if (data && data.leito) {
-                document.getElementById('currentCall').innerHTML = '';
-                document.getElementById('inputContainer').style.display = 'none';
-                document.getElementById('atendimentoMessage').style.display = 'none';
-                document.getElementById('message').innerHTML = '';
-                chamadaAtiva = false;
-            }
-        });
-
-        function connectWebSocket() {
-            const wsUrl = `ws://${window.location.hostname}:3001`;
-            ws = new WebSocket(wsUrl);
-
-            ws.onopen = () => {
-                console.log('Conectado ao WebSocket');
-                document.getElementById('connectionStatus').textContent = 'Conectado';
-                document.getElementById('connectionStatus').style.backgroundColor = '#dff0d8';
-                if (reconnectInterval) {
-                    clearInterval(reconnectInterval);
-                    reconnectInterval = null;
-                }
-            };
-
-            ws.onclose = () => {
-                console.log('Desconectado do WebSocket');
-                document.getElementById('connectionStatus').textContent = 'Desconectado';
-                document.getElementById('connectionStatus').style.backgroundColor = '#f2dede';
-
-                if (!reconnectInterval) {
-                    reconnectInterval = setInterval(() => {
-                        if (ws.readyState === WebSocket.CLOSED) {
-                            connectWebSocket();
-                        }
-                    }, 5000);
-                }
-            };
-
-            ws.onmessage = (event) => {
-                try {
-                    const message = JSON.parse(event.data);
-                    console.log('Mensagem recebida:', message);
-
-                    if (message.type === 'newCall') {
-                        showCall(message.data);
-                        chamadaAtiva = true;
-                        document.getElementById('inputContainer').style.display = 'block';
-                        document.getElementById('atendimentoMessage').style.display = 'none';
-                    }
-                } catch (error) {
-                    console.error('Erro ao processar mensagem:', error);
-                }
-            };
+      // Listener para finalização de chamada
+      socket.on("chamada-finalizada", (data) => {
+        console.log("Chamada finalizada recebida:", data);
+        if (data && data.leito) {
+          document.getElementById("currentCall").innerHTML = "";
+          document.getElementById("inputContainer").style.display = "none";
+          document.getElementById("atendimentoMessage").style.display = "none";
+          document.getElementById("message").innerHTML = "";
+          chamadaAtiva = false;
         }
+      });
 
-        function showCall(call) {
-            const callDiv = document.getElementById('currentCall');
-            const cardClass = call.criticidade === 'Emergencia' ? 'emergency' : 'auxilio';
+      function connectWebSocket() {
+        const wsUrl = `ws://${window.location.hostname}:3001`;
+        ws = new WebSocket(wsUrl);
 
-            callDiv.innerHTML = `
+        ws.onopen = () => {
+          console.log("Conectado ao WebSocket");
+          document.getElementById("connectionStatus").textContent = "Conectado";
+          document.getElementById("connectionStatus").style.backgroundColor =
+            "#dff0d8";
+          if (reconnectInterval) {
+            clearInterval(reconnectInterval);
+            reconnectInterval = null;
+          }
+        };
+
+        ws.onclose = () => {
+          console.log("Desconectado do WebSocket");
+          document.getElementById("connectionStatus").textContent =
+            "Desconectado";
+          document.getElementById("connectionStatus").style.backgroundColor =
+            "#f2dede";
+
+          if (!reconnectInterval) {
+            reconnectInterval = setInterval(() => {
+              if (ws.readyState === WebSocket.CLOSED) {
+                connectWebSocket();
+              }
+            }, 5000);
+          }
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data);
+            console.log("Mensagem recebida:", message);
+
+            if (message.type === "newCall") {
+              showCall(message.data);
+              chamadaAtiva = true;
+              document.getElementById("inputContainer").style.display = "block";
+              document.getElementById("atendimentoMessage").style.display =
+                "none";
+            }
+          } catch (error) {
+            console.error("Erro ao processar mensagem:", error);
+          }
+        };
+      }
+
+      function showCall(call) {
+        const callDiv = document.getElementById("currentCall");
+        const cardClass =
+          call.criticidade === "Emergencia" ? "emergency" : "auxilio";
+
+        callDiv.innerHTML = `
                 <div class="card ${cardClass}">
                     <h2>Chamada de ${call.criticidade}</h2>
                     <p>Local: ${call.leito} - ${call.quarto}</p>
                     <p>${call.andar} - ${call.ala}</p>
                 </div>
             `;
-        }
+      }
 
-        async function verificarNFC() {
-            const nfcInput = document.getElementById('nfcInput');
-            const messageDiv = document.getElementById('message');
+      async function verificarNFC() {
+        const nfcInput = document.getElementById("nfcInput");
+        const messageDiv = document.getElementById("message");
 
-            if (!nfcInput.value.trim()) {
-                messageDiv.innerHTML = `
+        if (!nfcInput.value.trim()) {
+          messageDiv.innerHTML = `
                     <div class="message error">
                         Por favor, insira um código NFC
                     </div>
                 `;
-                return;
-            }
+          return;
+        }
 
-            try {
-                const response = await fetch(`/verificar-nfc-mobile/${nfcInput.value}`);
-                const data = await response.json();
+        try {
+          const response = await fetch(
+            `/verificar-nfc-mobile/${nfcInput.value}`
+          );
+          const data = await response.json();
 
-                if (data.valid) {
-                    // Esconde o input e mostra mensagem de atendimento
-                    document.getElementById('inputContainer').style.display = 'none';
-                    document.getElementById('atendimentoMessage').style.display = 'block';
-                    messageDiv.innerHTML = `
+          if (data.valid) {
+            // Esconde o input e mostra mensagem de atendimento
+            document.getElementById("inputContainer").style.display = "none";
+            document.getElementById("atendimentoMessage").style.display =
+              "block";
+            messageDiv.innerHTML = `
                         <div class="message success">
                             Cartão habilitado: ${data.nome}
                         </div>
                     `;
-                } else {
-                    messageDiv.innerHTML = `
+          } else {
+            messageDiv.innerHTML = `
                         <div class="message error">
                             Cartão não habilitado
                         </div>
                     `;
-                }
-            } catch (error) {
-                messageDiv.innerHTML = `
+          }
+        } catch (error) {
+          messageDiv.innerHTML = `
                     <div class="message error">
                         Erro ao verificar NFC: ${error.message}
                     </div>
                 `;
-            }
         }
+      }
 
-        // Iniciar conexão WebSocket quando a página carregar
-        connectWebSocket();
+      // Iniciar conexão WebSocket quando a página carregar
+      connectWebSocket();
     </script>
-</body>
+  </body>
 </html>

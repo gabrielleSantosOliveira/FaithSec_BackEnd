@@ -1,162 +1,160 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sistema de Chamadas - Monitor</title>
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #f0f2f5;
-            height: 100vh;
-            overflow: hidden;
-        }
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #f0f2f5;
+        height: 100vh;
+        overflow: hidden;
+      }
 
-        .container-fluid {
-            padding: 20px;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
+      .container-fluid {
+        padding: 20px;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
 
-        .header {
-            text-align: center;
-            padding: 15px 0;
-            margin-bottom: 20px;
-        }
+      .header {
+        text-align: center;
+        padding: 15px 0;
+        margin-bottom: 20px;
+      }
 
-        .header h1 {
-            margin: 0;
-            font-size: 2.5em;
-            color: #333;
-        }
+      .header h1 {
+        margin: 0;
+        font-size: 2.5em;
+        color: #333;
+      }
 
-        .header p {
-            margin: 5px 0 0;
-            color: #666;
-        }
+      .header p {
+        margin: 5px 0 0;
+        color: #666;
+      }
 
-        .display-area {
-            display: flex;
-            flex: 1;
-            gap: 20px;
-            padding: 0 20px;
-            height: calc(100vh - 150px);
-        }
+      .display-area {
+        display: flex;
+        flex: 1;
+        gap: 20px;
+        padding: 0 20px;
+        height: calc(100vh - 150px);
+      }
 
-        .main-container {
-            flex: 3;
-            min-width: 0;
-        }
+      .main-container {
+        flex: 3;
+        min-width: 0;
+      }
 
-        .side-container {
-            flex: 1;
-            max-width: 400px;
-            display: none;
-        }
+      .side-container {
+        flex: 1;
+        max-width: 400px;
+        display: none;
+      }
 
-        .chamada-card {
-            background: #fff;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-            padding: 20px;
-            height: calc(100% - 40px);
-            display: flex;
-            flex-direction: column;
-        }
+      .chamada-card {
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+        padding: 20px;
+        height: calc(100% - 40px);
+        display: flex;
+        flex-direction: column;
+      }
 
-        .side-container .chamada-card {
-            height: auto;
-            max-height: 250px;
-        }
+      .side-container .chamada-card {
+        height: auto;
+        max-height: 250px;
+      }
 
-        .chamada-emergencia {
-            border-left: 5px solid #dc3545;
-            background-color: #fff5f5;
-        }
+      .chamada-emergencia {
+        border-left: 5px solid #dc3545;
+        background-color: #fff5f5;
+      }
 
-        .chamada-auxilio {
-            border-left: 5px solid #ffc107;
-        }
+      .chamada-auxilio {
+        border-left: 5px solid #ffc107;
+      }
 
-        .criticidade-badge {
-            font-size: 2em;
-            padding: 15px;
-            border-radius: 5px;
-            text-align: center;
-            color: white;
-            margin-bottom: 20px;
-        }
+      .criticidade-badge {
+        font-size: 2em;
+        padding: 15px;
+        border-radius: 5px;
+        text-align: center;
+        color: white;
+        margin-bottom: 20px;
+      }
 
-        .badge-emergencia {
-            background-color: #dc3545;
-        }
+      .badge-emergencia {
+        background-color: #dc3545;
+      }
 
-        .badge-auxilio {
-            background-color: #ffc107;
-            color: #000;
-        }
+      .badge-auxilio {
+        background-color: #ffc107;
+        color: #000;
+      }
 
-        .info-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 20px;
-            flex-grow: 1;
-        }
+      .info-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+        flex-grow: 1;
+      }
 
-        .info-label {
-            color: #666;
-            font-size: 1.2em;
-            margin-bottom: 5px;
-        }
+      .info-label {
+        color: #666;
+        font-size: 1.2em;
+        margin-bottom: 5px;
+      }
 
-        .info-value {
-            color: #333;
-            font-size: 2em;
-            font-weight: 500;
-        }
+      .info-value {
+        color: #333;
+        font-size: 2em;
+        font-weight: 500;
+      }
 
-        .side-container .info-value {
-            font-size: 1.5em;
-        }
+      .side-container .info-value {
+        font-size: 1.5em;
+      }
 
-        .timestamp {
-            text-align: right;
-            color: #666;
-            margin-top: 15px;
-            padding-top: 10px;
-            border-top: 1px solid #eee;
-        }
+      .timestamp {
+        text-align: right;
+        color: #666;
+        margin-top: 15px;
+        padding-top: 10px;
+        border-top: 1px solid #eee;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container-fluid">
-        
-        
-        <div class="display-area">
-            <div id="main-container" class="main-container"></div>
-            <div id="side-container" class="side-container"></div>
-        </div>
+      <div class="display-area">
+        <div id="main-container" class="main-container"></div>
+        <div id="side-container" class="side-container"></div>
+      </div>
     </div>
 
-    <script src="http://172.20.10.13:4000/socket.io/socket.io.js"></script>
+    <script src="http://192.168.1.10:4000/socket.io/socket.io.js"></script>
     <script>
-        const socket = io('http://172.20.10.13:4000/',{
-            reconnectionDelayMax: 10000,
-            reconnection: true
-        });
+      const socket = io("http://192.168.1.10:4000/", {
+        reconnectionDelayMax: 10000,
+        reconnection: true,
+      });
 
-        let activeCalls = [];
-        const mainContainer = document.getElementById('main-container');
-        const sideContainer = document.getElementById('side-container');
+      let activeCalls = [];
+      const mainContainer = document.getElementById("main-container");
+      const sideContainer = document.getElementById("side-container");
 
-        function createCard(data, isSmall = false) {
-            const card = document.createElement('div');
-            card.className = `chamada-card chamada-${data.criticidade.toLowerCase()}`;
-            
-            card.innerHTML = `
+      function createCard(data, isSmall = false) {
+        const card = document.createElement("div");
+        card.className = `chamada-card chamada-${data.criticidade.toLowerCase()}`;
+
+        card.innerHTML = `
                 <div class="criticidade-badge badge-${data.criticidade.toLowerCase()}">
                     ${data.criticidade.toUpperCase()}
                 </div>
@@ -179,75 +177,77 @@
                     </div>
                 </div>
                 <div class="timestamp">
-                    Chamada iniciada às ${data.timestamp || new Date().toLocaleTimeString()}
+                    Chamada iniciada às ${
+                      data.timestamp || new Date().toLocaleTimeString()
+                    }
                 </div>
             `;
-            
-            return card;
+
+        return card;
+      }
+
+      function updateDisplay() {
+        mainContainer.innerHTML = "";
+        sideContainer.innerHTML = "";
+
+        if (activeCalls.length === 0) {
+          sideContainer.style.display = "none";
+          return;
         }
 
-        function updateDisplay() {
-            mainContainer.innerHTML = '';
-            sideContainer.innerHTML = '';
-            
-            if (activeCalls.length === 0) {
-                sideContainer.style.display = 'none';
-                return;
-            }
+        // Encontra chamada de emergência (se houver)
+        const emergencyCall = activeCalls.find(
+          (call) => call.criticidade === "Emergencia"
+        );
 
-            // Encontra chamada de emergência (se houver)
-            const emergencyCall = activeCalls.find(call => 
-                call.criticidade === 'Emergencia'
-            );
+        if (emergencyCall) {
+          // Se há emergência, ela vai para o container principal
+          mainContainer.appendChild(createCard(emergencyCall));
 
-            if (emergencyCall) {
-                // Se há emergência, ela vai para o container principal
-                mainContainer.appendChild(createCard(emergencyCall));
-                
-                // Outras chamadas vão para o lado
-                const otherCalls = activeCalls.filter(call => 
-                    call.criticidade !== 'Emergencia'
-                );
-                
-                if (otherCalls.length > 0) {
-                    sideContainer.style.display = 'block';
-                    otherCalls.forEach(call => {
-                        sideContainer.appendChild(createCard(call, true));
-                    });
-                } else {
-                    sideContainer.style.display = 'none';
-                }
-            } else {
-                // Se não há emergência, a primeira chamada vai para o principal
-                mainContainer.appendChild(createCard(activeCalls[0]));
-                
-                if (activeCalls.length > 1) {
-                    sideContainer.style.display = 'block';
-                    activeCalls.slice(1).forEach(call => {
-                        sideContainer.appendChild(createCard(call, true));
-                    });
-                } else {
-                    sideContainer.style.display = 'none';
-                }
-            }
+          // Outras chamadas vão para o lado
+          const otherCalls = activeCalls.filter(
+            (call) => call.criticidade !== "Emergencia"
+          );
+
+          if (otherCalls.length > 0) {
+            sideContainer.style.display = "block";
+            otherCalls.forEach((call) => {
+              sideContainer.appendChild(createCard(call, true));
+            });
+          } else {
+            sideContainer.style.display = "none";
+          }
+        } else {
+          // Se não há emergência, a primeira chamada vai para o principal
+          mainContainer.appendChild(createCard(activeCalls[0]));
+
+          if (activeCalls.length > 1) {
+            sideContainer.style.display = "block";
+            activeCalls.slice(1).forEach((call) => {
+              sideContainer.appendChild(createCard(call, true));
+            });
+          } else {
+            sideContainer.style.display = "none";
+          }
         }
+      }
 
-        socket.on('nova-chamada', (data) => {
-            console.log('nova-chamada')
-            // Adiciona timestamp se não existir
-            if (!data.timestamp) {
-                data.timestamp = new Date().toLocaleTimeString();
-            }
-            activeCalls.push(data);
-            updateDisplay();
-        });
+      socket.on("nova-chamada", (data) => {
+        console.log("nova-chamada");
+        // Adiciona timestamp se não existir
+        if (!data.timestamp) {
+          data.timestamp = new Date().toLocaleTimeString();
+        }
+        activeCalls.push(data);
+        updateDisplay();
+      });
 
-        socket.on('chamada-finalizada', (data) => {
-            if (data && data.leito) {
-                activeCalls = activeCalls.filter(call => call.leito !== data.leito);
-                updateDisplay();
-            }
-        });
+      socket.on("chamada-finalizada", (data) => {
+        if (data && data.leito) {
+          activeCalls = activeCalls.filter((call) => call.leito !== data.leito);
+          updateDisplay();
+        }
+      });
     </script>
-</body>
+  </body>
 </html>

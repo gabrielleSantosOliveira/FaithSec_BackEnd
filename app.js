@@ -219,13 +219,13 @@ app.post('/chamada', (req, res) => {
       throw new Error('Criticidade inválida. Deve ser "Emergencia" ou "Auxilio"');
     }
 
-    const chamadaData = { 
-      leito, 
-      andar, 
-      quarto, 
-      ala, 
+    const chamadaData = {
+      leito,
+      andar,
+      quarto,
+      ala,
       criticidade,
-      timestamp: new Date().toLocaleTimeString() 
+      timestamp: new Date().toLocaleTimeString()
     };
 
     // Broadcast via WebSocket (para o celular)
@@ -316,7 +316,7 @@ app.get('/enfermeiros', async (req, res) => {
 
 app.post('/enfermeiros/buscar', async (req, res) => {
   try {
-    const { nome, ala, cargo, nfc, estadoCracha } = req.body;
+    const { nome, ala, cargo, nfc, estadoCracha, limite, page } = req.body;
 
     // Construindo a cláusula WHERE dinamicamente
     const whereClause = {};
@@ -347,22 +347,32 @@ app.post('/enfermeiros/buscar', async (req, res) => {
       };
     }
 
-    // Verifica se pelo menos um filtro foi aplicado
-    if (Object.keys(whereClause).length === 0) {
-      return res.status(400).json({
-        error: "É necessário fornecer pelo menos um critério de filtro válido"
-      });
-    }
+    // Definindo valores de paginação
+    const pageNumber = Number(page) || 1; // Página padrão: 1
+    const limitNumber = Number(limite) || 20; // Limite padrão: 20
+    const offset = (pageNumber - 1) * limitNumber; // Cálculo do offset
+
+    // Contar o total de registros que atendem aos filtros
+    const totalEnfermeiros = await Enfermeiro.count({ where: whereClause });
 
     const enfermeiros = await Enfermeiro.findAll({
       where: whereClause,
       attributes: {
       },
       order: [['nome', 'ASC']], // Ordena por nome
-      limit: 20
+      limit: 20,
+      limit: limitNumber,
+      offset: offset
     });
 
-    res.json(enfermeiros);
+    // Calculando o total de páginas
+    const totalPages = Math.ceil(totalEnfermeiros / limitNumber);
+
+    res.json({
+      enfermeiros,
+      totalPaginas: totalPages,
+      paginaAtual: pageNumber
+    });
   } catch (error) {
     console.error('Erro ao buscar enfermeiros:', error);
     res.status(500).json({
